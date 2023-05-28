@@ -1,90 +1,34 @@
 require('dotenv').config();
+require('./passport');
 const express = require('express');
 const createError = require('http-errors');
 const path = require('path');
-const cookieParser = require('cookie-parser');
 const logger = require('morgan');
-const session = require("express-session");
-const passport = require('passport');
-const LocalStrategy = require("passport-local").Strategy;
-const bcrypt = require("bcryptjs"); 
+const apiRouter = require('./routes/api')
+const jwt = require('jsonwebtoken');
+const cors = require('cors');
 const app = express();
 
 // Set up mongoose connection
 const mongoose = require("mongoose");
 mongoose.set('strictQuery', false);
 const mongoDB = process.env.MONGO_URI;
-
 main().catch(err => console.log(err));
 async function main() {
   await mongoose.connect(mongoDB);
 }
 
-// passportJS functions
-passport.use(
-  new LocalStrategy(async(userName, password, done) => {
-    try {
-      const user = await User.findOne({ userName: userName });
-      if (!user) {
-        return done(null, false, { message: "Incorrect username" });
-      }
-      bcrypt.compare(password, user.password, (err, res) => {
-        if (res) {
-          // passwords match! log user in
-          return done(null, user)
-        } else {
-          // passwords do not match!
-          return done(null, false, { message: "Incorrect password" })
-        }
-      })
-    } catch(err) {
-      return done(err);
-    }
-  })
-);
-passport.serializeUser(function(user, done) {
-  done(null, user.id);
-});
-passport.deserializeUser(async function(id, done) {
-  try {
-    const user = await User.findById(id);
-    done(null, user);
-  } catch(err) {
-    done(err);
-  };
-});
+// routes
+app.use('/api/', apiRouter);
 
 // middleware
 app.use(logger('dev'));
 app.use(express.json());
-app.use(session({ secret: process.env.SECRET_KEY, resave: false, saveUninitialized: true }));
-app.use(passport.initialize());
-app.use(passport.session());
 app.use(express.urlencoded({ extended: false }));
-app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(function(req, res, next) {
   res.locals.currentUser = req.user;
   next();
-});
-
-// routes
-app.use('/', indexRouter);
-app.use('/posts/', postsRouter);
-app.use('/users/', usersRouter);
-app.post(
-  "/log-in",
-  passport.authenticate("local", {
-    successRedirect: "/",
-    failureRedirect: "/"
-  })
-);
-app.post(
-  "/logout", function(req, res, next){
-  req.logout(function(err) {
-    if (err) { return next(err); }
-    res.redirect('/');
-  });
 });
 
 // catch 404 and forward to error handler
@@ -100,7 +44,7 @@ app.use(function(err, req, res, next) {
 
   // render the error page
   res.status(err.status || 500);
-  res.render('error');
+  res.send('error');
 });
 
 module.exports = app;
