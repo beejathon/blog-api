@@ -56,4 +56,10 @@ router.delete("/posts/:postid/comments/:commentid", passport.authenticate('jwt',
 // PUT - update comment
 router.put("/posts/:postid/comments/:commentid", passport.authenticate('jwt', {session: false}), commentController.comment_update);
 
+// POST - like comment
+router.post("/posts/:postid/comments/:commentid/like", passport.authenticate('jwt', {session: false}), commentController.comment_like);
+
+// POST - unlike comment
+router.post("/posts/:postid/comments/:commentid/unlike", passport.authenticate('jwt', {session: false}), commentController.comment_unlike);
+
 module.exports = router;

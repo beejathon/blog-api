@@ -1,7 +1,7 @@
-const { body, validationResult } = require('express-validator')
+const { body, validationResult } = require('express-validator');
 const Post = require("../models/post");
-const Comment = require("../models/comment")
-const Like = require("../models/like")
+const Comment = require("../models/comment");
+const Like = require("../models/like");
 
 exports.post_list = (req, res, next) => {
   Post.find({})
@@ -44,7 +44,7 @@ exports.post_create = [
       });
     }
 
-    const post = new Post( {
+    const post = new Post({
       title: req.body.title,
       content: req.body.content,
       date: Date.now(),
@@ -140,7 +140,7 @@ exports.post_unpublish = async (req, res, next) => {
       return res.status(403).json({ message: 'Admin access needed.'})
     }
   } catch (err) {
-    res.status(500).json(err)
+    return res.status(500).json(err)
   }
 }
 
@@ -154,7 +154,7 @@ exports.post_like = async (req, res, next) => {
     await like.save();
     res.status(200).json({ post_liked: like })
   } catch (err) {
-    res.status(500).json(err)
+    return res.status(500).json(err);
   }
 }
 
@@ -164,6 +164,6 @@ exports.post_unlike = async (req, res, next) => {
     if (!like) return res.status(400).json({ message: 'Like not found' });
     res.status(200).json({ post_unliked: like })
   } catch (err) {
-    res.status(500).json(err)
+    return res.status(500).json(err);
   }
 }
