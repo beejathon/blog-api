@@ -8,9 +8,9 @@ const User = require("./models/user");
 
 // passportJS authorize user login
 passport.use(
-  new LocalStrategy(async(userName, password, done) => {
+  new LocalStrategy(async(username, password, done) => {
     try {
-      const user = await User.findOne({ userName: userName });
+      const user = await User.findOne({ userName: username });
       if (!user) {
         return done(null, false, { message: "Incorrect username" });
       }
@@ -31,16 +31,16 @@ passport.use(
 
 //JWT strategy to authroize requests via token
 passport.use(new JWTStrategy({
-  jwtFromRequest: ExtractJWT.fromAuthHeaderAsBearerToken(),
-  secretOrKey : process.env.SECRET_KEY
+    jwtFromRequest: ExtractJWT.fromAuthHeaderAsBearerToken(),
+    secretOrKey : process.env.SECRET_KEY
   },
   function (jwtPayload, cb) {
     return User.findOneById(jwtPayload.id)
       .then(user => {
-          return cb(null, user);
+        return cb(null, user);
       })
       .catch(err => {
-          return cb(err);
+        return cb(err);
       });
   }
 ));
