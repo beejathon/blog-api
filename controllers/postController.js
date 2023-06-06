@@ -2,50 +2,40 @@ const async = require('async');
 const { body, validationResult } = require('express-validator')
 const Post = require("../models/post");
 const Comment = require("../models/comment")
+const jwt = require("jsonwebtoken");
 
 exports.post_list = (req, res, next) => {
   Post.find({})
     .sort({ date: 1 })
     .populate("user")
-    .exec(function (err, post) {
-      if (err) {
-        return res.json(err);
-      }
-      res.status(200).json(post);
+    .then((posts) => {
+      res.status(200).json(posts);
+    })
+    .catch((err) => {
+      res.status(400).json(err)
     })
 };
 
 exports.post_detail = (req, res, next) => {
-  async.parallel(
-    {
-      post(callback) {
-        Post.findById(req.params.id)
-        .populate("user")
-        .exec(callback)
-      },
-      comments(callback) {
-        Comment.find({ post: req.params.id})
-          .sort({ date: 1 })
-          .exec(callback)
-      }
-    },
-    (err, results) => {
-      if (err) {
-        return res.json(err);
-      }
-      res.status(200).json(results)
-    }
-  );
+  Post.findById(req.params.postid)
+    .populate("user")
+    .then((post) => {
+      res.status(200).json(post);
+    })
+    .catch((err) => {
+      res.status(400).json(err)
+    })
 }
 
 exports.post_create = [
   body("title", "Title must not be empty.")
     .trim()
     .isLength({ min: 1 }),
-  body("body", "Text must not be empty.")
+  body("content", "Content must not be empty.")
     .trim()
     .isLength({ min: 1 }),
-  (req, res, next) => {
+
+  async (req, res, next) => {
     const errors = validationResult(req);
 
     if (!errors.isEmpty()) {
@@ -57,49 +47,45 @@ exports.post_create = [
 
     const post = new Post( {
       title: req.body.title,
-      text: req.body.body,
+      content: req.body.content,
       date: Date.now(),
-      user: req.user
+      user: req.user._id,
+      published: false
     })
 
-    post.save((err) => {
-      if (err) {
-        return next(err);
-      }
-      res.status(200).json({post, token: req.user})
-    })
+    try {
+      await post.save();
+      res.status(200).json({post})
+    } catch (err) {
+      return res.status(500).json('Error saving post to db.')
+    }
   }
 ]
 
-exports.post_delete = (req, res, next) => {
-  async.parallel(
-    {
-      deletePost(callback) {
-        Post.findByIdAndRemove(req.params.postid)
-          .exec(callback)
-      },
-      deleteComments(callback) {
-        Comment.deleteMany({ post: req.params.postid })
-          .exec(callback)
-      }
-    },
-    (err, results) => {
-      if (err) {
-        return next(err);
-      }
-      res.status(200).json({ message: `Post ${req.params.postid} deleted` })
+exports.post_delete = async (req, res, next) => {
+  try {
+    if (req.user.admin) {
+      const post = await Post.findByIdAndRemove(req.params.postid);
+      if (!post) return res.status(400).json({ message: 'Post not found' })
+      const comments = await Comment.deleteMany({ post: req.params.postid });
+      res.status(200).json({ post_deleted: post, comments_deleted: comments });
+    } else {
+      return res.status(403).json({ message: 'Admin access needed.'})
     }
-  )
+  } catch (err) {
+    res.status(500).json(err)
+  }
 }
 
-exports.post_update = (req, res, next) => [
+exports.post_update = [
   body("title", "Title must not be empty.")
     .trim()
     .isLength({ min: 1 }),
-  body("body", "Text must not be empty.")
+  body("content", "Content must not be empty.")
     .trim()
     .isLength({ min: 1 }),
-  (req, res, next) => {
+
+  async (req, res, next) => {
     const errors = validationResult(req);
 
     if (!errors.isEmpty()) {
@@ -111,17 +97,18 @@ exports.post_update = (req, res, next) => [
 
     const post = new Post( {
       title: req.body.title,
-      text: req.body.body,
+      content: req.body.content,
       date: Date.now(),
-      user: req.user,
+      user: req.user._id,
+      published: false,
       _id: req.params.id
     })
 
-    post.save((err) => {
-      if (err) {
-        return next(err);
-      }
-      res.status(200).json({post, token: req.user})
-    })
+    try {
+      await post.save();
+      res.status(200).json({post})
+    } catch (err) {
+      return res.status(500).json({ message:'Error saving post to db.'})
+    }
   }
 ]

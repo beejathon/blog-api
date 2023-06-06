@@ -84,14 +84,14 @@ exports.login = (req, res, next) => {
       }
 
       jwt.sign(
-        { _id: user._id, username: user.userName },
+        { user },
         process.env.SECRET_KEY,
-        { expiresIn: '10m' },
+        { expiresIn: '10h' },
         (err, token) => {
           if (err) return res.status(400).json({err: 'web token error'});
           res.status(200).json({
-            token: token,
-            user: { _id: user._id, username: user.userName },
+            token,
+            user
           })
         }
       )

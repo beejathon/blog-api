@@ -30,17 +30,19 @@ passport.use(
 );
 
 //JWT strategy to authroize requests via token
-passport.use(new JWTStrategy({
-    jwtFromRequest: ExtractJWT.fromAuthHeaderAsBearerToken(),
-    secretOrKey : process.env.SECRET_KEY
-  },
-  function (jwtPayload, cb) {
-    return User.findOneById(jwtPayload.id)
-      .then(user => {
-        return cb(null, user);
-      })
-      .catch(err => {
-        return cb(err);
-      });
-  }
-));
+passport.use(
+  new JWTStrategy(
+    {
+      jwtFromRequest: ExtractJWT.fromAuthHeaderAsBearerToken(),
+      secretOrKey : process.env.SECRET_KEY
+    },
+    async (token, done) => {
+      try {
+        return done(null, token.user)
+      } catch(error){
+        return done(error)
+        }
+      }
+    
+  )
+);
