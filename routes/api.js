@@ -6,7 +6,7 @@ const postController = require("../controllers/postController");
 const commentController = require("../controllers/commentController");
 
 // POST - create new user
-router.post("/users", userController.register);
+router.post("/users/register", userController.register);
 
 // POST - log user in
 router.post("/users/login", userController.login);
@@ -28,6 +28,18 @@ router.delete("/posts/:postid", passport.authenticate('jwt', {session: false}), 
 
 // PUT - update post
 router.put("/posts/:postid", passport.authenticate('jwt', {session: false}), postController.post_update);
+
+// POST - publish post
+router.post("/posts/:postid/publish", passport.authenticate('jwt', {session: false}), postController.post_publish);
+
+// POST - unpublish post
+router.post("/posts/:postid/unpublish", passport.authenticate('jwt', {session: false}), postController.post_unpublish);
+
+// POST - like post
+router.post("/posts/:postid/like", passport.authenticate('jwt', {session: false}), postController.post_like);
+
+// POST - unlike post
+router.post("/posts/:postid/unlike", passport.authenticate('jwt', {session: false}), postController.post_unlike);
 
 // GET - all comments
 router.get("/posts/:postid/comments", commentController.comment_list);
