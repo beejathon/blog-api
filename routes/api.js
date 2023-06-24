@@ -4,15 +4,33 @@ const passport = require('passport')
 const userController = require("../controllers/userController");
 const postController = require("../controllers/postController");
 const commentController = require("../controllers/commentController");
+const multer = require("multer");
+const storage = multer.diskStorage({
+  destination: function(req, file, cb) {
+    cb(null, './uploads')
+  },
+  filename: function(req,file, cb) {
+    cb(null, new Date().toISOString() + file.originalname)
+  }
+});
+const fileFilter = (req, file, cb) => {
+  if (file.mimetype === 'image/jpeg' || file.mimetype === 'image/png' || file.mimetype === 'image/gif') {
+    cb(null, true);
+  } else {
+    cb(null, false);
+  }
+}
+const upload = multer({
+  storage: storage,
+  limits: {fileSize: 1024 * 1024 * 5},
+  fileFilter: fileFilter,
+});
 
 // POST - create new user
 router.post("/users/register", userController.register);
 
 // POST - log user in
 router.post("/users/login", userController.login);
-
-// POST - log user out
-router.post("/users/logout", userController.logout);
 
 // GET - all posts
 router.get("/posts", postController.post_list);
@@ -21,13 +39,13 @@ router.get("/posts", postController.post_list);
 router.get("/posts/:postid", postController.post_detail);
 
 // POST - create post
-router.post("/posts", passport.authenticate('jwt', {session: false}), postController.post_create);
+router.post("/posts", passport.authenticate('jwt', {session: false}), upload.single('image'), postController.post_create);
 
 // DELETE - delete post
 router.delete("/posts/:postid", passport.authenticate('jwt', {session: false}), postController.post_delete);
 
 // PUT - update post
-router.put("/posts/:postid", passport.authenticate('jwt', {session: false}), postController.post_update);
+router.put("/posts/:postid", passport.authenticate('jwt', {session: false}), upload.single('image'), postController.post_update);
 
 // POST - publish post
 router.post("/posts/:postid/publish", passport.authenticate('jwt', {session: false}), postController.post_publish);
@@ -40,6 +58,9 @@ router.post("/posts/:postid/like", passport.authenticate('jwt', {session: false}
 
 // POST - unlike post
 router.post("/posts/:postid/unlike", passport.authenticate('jwt', {session: false}), postController.post_unlike);
+
+// GET - all likes for post
+router.get("/posts/:postid/likes", postController.post_likes_list);
 
 // GET - all comments
 router.get("/posts/:postid/comments", commentController.comment_list);

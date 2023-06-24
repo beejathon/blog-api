@@ -23,6 +23,12 @@ exports.register = [
         throw new Error('wtf');
       }
     }),
+  body("email")
+    .trim()
+    .escape()
+    .not()
+    .isEmpty()
+    .withMessage("Email must not be empty."),
   body("password")
     .trim()
     .isStrongPassword(
@@ -33,7 +39,7 @@ exports.register = [
         minSymbols: 1
       })
     .withMessage("Password is too weak. Must be min. 6 characters, 1 lowercase, 1 uppercase, and 1 symbol"),
-  body("confirm_password")
+  body("password_conf")
     .custom(async(value, {req}) => {
       if (value !== req.body.password) {
         // throw error if passwords do not match
@@ -47,24 +53,33 @@ exports.register = [
     const errors = validationResult(req);
 
     if (!errors.isEmpty()) {
-      return res.status(403).json({
+      return res.status(400).json({
         errors: errors.array(),
       });
     } else {
       bcrypt.hash(req.body.password, 10, async (err, hashedPassword) => {
-        if (err) {
-          return res.status(400).json(err);
-        } 
-
-        const user = new User({
-          userName: req.body.username,
-          password: hashedPassword,
-          admin: false,
-        });
-
+        if (err) return res.status(400).json(err);
         try {
+          const user = new User({
+            userName: req.body.username,
+            email: req.body.email,
+            password: hashedPassword,
+            admin: false,
+          });
           await user.save();
-          res.status(200).json({message:'user created'})
+
+          jwt.sign(
+            { user },
+            process.env.SECRET_KEY,
+            { expiresIn: '10h' },
+            (err, token) => {
+              if (err) return res.status(400).json({err: 'web token error'});
+              res.status(200).json({
+                token,
+                user
+              })
+            }
+          )
         } catch (err) {
           return res.status(400).json(err);
         }        
@@ -73,34 +88,29 @@ exports.register = [
   },
 ];
 
-exports.login = (req, res, next) => {
+exports.login = async (req, res, next) => {
   try {
-    passport.authenticate('local', {session: false}, (err, user) => {
-      if (err || !user) {
+    passport.authenticate('local', {session: false}, async (err, user, info) => {
+      if (err || user === false) {
         return res.status(400).json({
-          message: 'Something is not right',
-          user : user
+          error: info.message
         });
-      }
-
-      jwt.sign(
-        { user },
-        process.env.SECRET_KEY,
-        { expiresIn: '10h' },
-        (err, token) => {
-          if (err) return res.status(400).json({err: 'web token error'});
-          res.status(200).json({
-            token,
-            user
-          })
-        }
-      )
+      } else {
+        jwt.sign(
+          { user },
+          process.env.SECRET_KEY,
+          { expiresIn: '10h' },
+          (err, token) => {
+            if (err) return res.status(400).json({err: 'web token error'});
+            res.status(200).json({
+              token,
+              user
+            })
+          }
+        )
+      } 
     }) (req, res);
   } catch (err) {
-    res.status(400).json(err)
+    res.status(400).json('err')
   }
-}
-
-exports.logout = (req, res, next) => {
-  res.send('logout')
 }

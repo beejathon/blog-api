@@ -1,11 +1,12 @@
 const { body, validationResult } = require('express-validator');
+const Post = require("../models/post");
 const Comment = require("../models/comment");
 const Like = require("../models/like");
 
 exports.comment_list = (req, res, next) => {
   Comment.find({ post: req.params.postid })
     .sort({ date: 1 })
-    .populate("commenter", "username")
+    .populate("commenter", "userName")
     .then((comments) => {
       if (comments.length===0) return res.status(200).json({ message: "No comments." })
       res.status(200).json(comments);
@@ -17,7 +18,7 @@ exports.comment_list = (req, res, next) => {
 
 exports.comment_detail = (req, res, next) => {
   Comment.findById(req.params.commentid)
-    .populate("author", "username")
+    .populate("comenter", "userName")
     .then((comment) => {
       if (!comment) return res.status(200).json({ message: "No comment." })
       res.status(200).json(comment);
@@ -42,14 +43,18 @@ exports.comment_create = [
       });
     }
 
-    const comment = new Comment({
-      commenter: req.user._id,
-      comment: req.body.comment,
-      date: Date.now(),
-      post: req.params.postid
-    })
-
     try {
+      const comment = new Comment({
+        commenter: req.user._id,
+        comment: req.body.comment,
+        date: Date.now(),
+        post: req.params.postid
+      })
+      const post = await Post.findByIdAndUpdate(
+        req.params.postid,
+        { $inc: { commentCount: 1 } }
+      )
+      if (!post) return res.status(400).json({ message: 'Post not found' })
       await comment.save();
       res.status(200).json({ comment_created: comment })
     } catch (err) {
@@ -64,6 +69,11 @@ exports.comment_delete = async (req, res, next) => {
       const comment = await Comment.findByIdAndRemove(req.params.commentid);
       if (!comment) return res.status(400).json({ message: 'Comment not found' })
       const likes = await Like.deleteMany({ commentRef: req.params.commentid });
+      const post = await Post.findByIdAndUpdate(
+        req.params.postid,
+        { $inc: { commentCount: -1 } }
+      )
+      if (!post) return res.status(400).json({ message: 'Post not found' })
       res.status(200).json({ 
         comment_deleted: comment, 
         likes_deleted: likes 
