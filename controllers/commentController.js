@@ -18,7 +18,7 @@ exports.comment_list = (req, res, next) => {
 
 exports.comment_detail = (req, res, next) => {
   Comment.findById(req.params.commentid)
-    .populate("comenter", "userName")
+    .populate("commenter", "userName")
     .then((comment) => {
       if (!comment) return res.status(200).json({ message: "No comment." })
       res.status(200).json(comment);
@@ -102,15 +102,15 @@ exports.comment_update = [
     }
 
     try {
-      const comment = await Comment.findByIdAndUpdate(
-        req.params.commentid,
+      const comment = await Comment.findOneAndUpdate(
+        { _id: req.params.commentid},
         {
           comment: req.body.comment,
-          date: Date.now()
-        }
+        },
+        { new: true }
       )
       if (!comment) return res.status(400).json({ message: 'Comment not found' })
-      res.status(200).json({ comment_updated: comment._id })
+      res.status(200).json({ comment: comment })
     } catch (err) {
       return res.status(500).json({ message:'Error saving comment to db.', error: err})
     }

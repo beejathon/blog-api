@@ -2,7 +2,7 @@ const { body, validationResult } = require('express-validator');
 const Post = require("../models/post");
 const Comment = require("../models/comment");
 const Like = require("../models/like");
-const fs = require("fs");
+const cloudinary = require('../cloudinary');
 
 exports.post_list = (req, res, next) => {
   Post.find({})
@@ -28,7 +28,7 @@ exports.post_detail = (req, res, next) => {
 }
 
 exports.post_create = [
-   body("title", "Title must not be empty.")
+  body("title", "Title must not be empty.")
     .trim()
     .isLength({ min: 1 }),
   body("content", "Content must not be empty.")
@@ -39,24 +39,19 @@ exports.post_create = [
     const errors = validationResult(req);
 
     if (!errors.isEmpty()) {
-      fs.unlink(req.file.path, (err) => {
-        if (err) {
-          return next(err);
-        }
-        console.log(`Successfully deleted image`);
-      })
       res.status(400).json({
         errors: errors.array(),
         data: req.body
       });
     }
-
+    
     try {
       const post = new Post({
         author: req.user._id,
         title: req.body.title,
         content: req.body.content,
-        image: req.file.path,
+        image: req.body.image,
+        imageId: req.body.imageId,
         date: Date.now(),
         published: false,
         commmentCount: 0,
@@ -71,6 +66,26 @@ exports.post_create = [
   }
 ]
 
+exports.post_img_upload = async (req, res, next) => {
+  try {
+    const file = req.files.image;
+    await cloudinary.uploader.upload(file.tempFilePath,
+    { 
+      upload_preset: 'iqh8rvti',
+      allowed_formats: ['png', 'jpg', 'jpeg', 'svg', 'gif', 'webp', 'jfif']
+    }, 
+    (err, result) => {
+      if (err) {
+        return res.status(400).json(err); 
+      }
+      return res.status(200).json(result)
+    });
+  } catch (err) {
+    console.log(err)
+  }
+
+}
+
 exports.post_delete = async (req, res, next) => {
   try {
     if (req.user.admin) {
@@ -78,12 +93,6 @@ exports.post_delete = async (req, res, next) => {
       if (!post) return res.status(400).json({ message: 'Post not found' })
       const comments = await Comment.deleteMany({ post: req.params.postid });
       const likes = await Like.deleteMany({ postRef: req.params.postid });
-      fs.unlink(post.image, (err) => {
-        if (err) {
-          return next(err)
-        }
-        console.log(`Successfully deleted image`);
-      })
       res.status(200).json({ 
         post_deleted: post, 
         comments_deleted: comments, 
@@ -116,27 +125,17 @@ exports.post_update = [
     }
 
     try {
-      const image = await Post.findById(req.params.postid).select({ image: 1, _id: 0 });
-      if (!image) return res.status(400).json({ message: 'Image not found' });
-      fs.unlink(image.image, (err) => {
-        if (err) {
-          return next(err)    
-        }
-        console.log(`Successfully deleted image`);
-      })
-      const post = await Post.findByIdAndUpdate(
-        req.params.postid,
-        {
-          title: req.body.title,
-          content: req.body.content,
-          image: req.file.path,
-          date: Date.now()
-        }
-      )
-      if(!post) return res.status(400).json({ message: 'Post not found' })
-      res.status(200).json({ post_updated: post._id })
+      const post = await Post.findById(req.params.postid)
+      post.title = req.body.title;
+      post.content = req.body.content;
+      post.image = req.body.image;
+      post.imageId = req.body.imageId;
+      post.date = Date.now();
+      const updatedPost = await post.save()
+      if(!updatedPost) return res.status(400).json({ message: 'Post not found' })
+      res.status(200).json({ post_updated: updatedPost })
     } catch (err) {
-      return res.status(500).json({ message:'Error updating post.', error: err})
+      return res.status(500).json({ message: err})
     }
   }
 ]
