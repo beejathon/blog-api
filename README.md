@@ -5,6 +5,7 @@ A REST API only back-end serving JSON to two front-ends as part of a full-stack 
 Penultimate project in the NodeJS course of the Full Stack JavaScript curriculum @ [The Odin Project](https://www.theodinproject.com/lessons/nodejs-blog-api).
 
 Link to Blog CMS @ [https://github.com/beejathon/blog-cms](https://github.com/beejathon/blog-cms)
+
 Link to Blog Client @ [https://github.com/beejathon/portfolio](https://github.com/beejathon/portfolio)
 
 Live demo @ [https://beejathon.github.io/portfolio/#/portfolio/blog](https://beejathon.github.io/portfolio/#/portfolio/blog)
