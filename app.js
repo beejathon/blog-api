@@ -1,13 +1,11 @@
 require('dotenv').config();
-const express = require('express');
+require('./passport');
 const logger = require('morgan');
 const apiRouter = require('./routes/api');
 const cors = require('cors');
-require('./passport');
 const methodOverride = require('method-override');
-const fileUpload = require('express-fileupload');
+const express = require('express');
 const app = express();
-
 
 // Set up mongoose connection
 const mongoose = require("mongoose");
@@ -23,7 +21,6 @@ app.use(logger('dev'));
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: false, limit: '5mb' }));
 app.use(methodOverride('X-HTTP-Method-Override'));
-app.use(fileUpload({ useTempFiles: true }))
 
 let corsOptions = {
   origin: [
